@@ -3,13 +3,14 @@ var request = require('request'); // "Request" library
 var cors = require('cors');
 var querystring = require('querystring');
 var cookieParser = require('cookie-parser');
+var config = require('./config.json');
 
-
-var client_id = process.env.CLIENT_ID
-var client_secret = process.env.CLIENT_SECRET
+var client_id = process.env.CLIENT_ID || config.client_id
+console.log(client_id)
+var client_secret = process.env.CLIENT_SECRET || config.client_secret
 var ip = process.env.OPENSHIFT_NODEJS_IP || '127.0.0.1'
-var redirect_uri = process.env.REDIR_URL
-var port = process.env.OPENSHIFT_NODEJS_PORT || 8080
+var redirect_uri = process.env.REDIR_URL || config.redirect_uri
+var port = process.env.OPENSHIFT_NODEJS_PORT || 8888
 
 /**
  * Generates a random string containing numbers and letters

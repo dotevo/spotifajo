@@ -63,6 +63,7 @@
       Source playlist: <input type="text" id="srcinput" value="7LYL5Mcc2oEBphWrKujpq3"/><br/>
       Destination playlist: <input type="text" id="dstinput" value="0eme5GZSMd9DlC84ETBZWU"/><br/>
       Limit: <input type="text" id="limit" value="100"/><br/>
+      Limit (per album): <input type="text" id="limit" value="1"/><br/>
       <input type="submit" id="copybtn" value="Copy top">
     </div>
 
@@ -82,6 +83,7 @@
         var TOPPLAYLIST = '0eme5GZSMd9DlC84ETBZWU'
         var PLENA = '7LYL5Mcc2oEBphWrKujpq3'
         var LIMIT = 100
+        var LIMIT_ALBUM = 1;
         var res = []
         var to_add = []
 
@@ -95,6 +97,7 @@
           PLENA = $("#srcinput").val()
           TOPPLAYLIST = $("#dstinput").val()
           LIMIT = Number($("#limit").val())
+          LIMIT_ALBUM = Number($("#limit-album").val())
           download(0)
         })
 
@@ -157,9 +160,19 @@
             //console.log()
             return parseInt(a.track.popularity) < parseInt(b.track.popularity);
           });
-          for(var i=0;i<res.length && i < LIMIT;i++) {
+          var added = 0;
+          var albums = {};
+          for(var i=0;i<res.length && added < LIMIT;i++) {
             console.log(res[i].track.popularity)
-            to_add.push(res[i].track.id)
+            if(albums[res[i].track.album.id] == null) {
+                albums[res[i].track.album.id] = 0;
+            }
+
+            if(albums[res[i].track.album.id] < LIMIT_ALBUM) {
+                added++;
+                albums[res[i].track.album.id]++;
+                to_add.push(res[i].track.id)
+            }
           }
           console.log(res)
           $.ajax({
