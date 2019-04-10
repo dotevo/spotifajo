@@ -63,7 +63,7 @@
       Source playlist: <input type="text" id="srcinput" value="7LYL5Mcc2oEBphWrKujpq3"/><br/>
       Destination playlist: <input type="text" id="dstinput" value="0eme5GZSMd9DlC84ETBZWU"/><br/>
       Limit: <input type="text" id="limit" value="100"/><br/>
-      Limit (per album): <input type="text" id="limit" value="1"/><br/>
+      Limit (per album): <input type="text" id="limit-album" value="3"/><br/>
       <input type="submit" id="copybtn" value="Copy top">
     </div>
 
@@ -74,7 +74,7 @@
       {{/list}}
     </script>
 
-
+    <script src="https://s3-us-west-2.amazonaws.com/s.cdpn.io/14082/FileSaver.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/handlebars.js/2.0.0-alpha.1/handlebars.min.js"></script>
     <script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
     <script>
@@ -83,9 +83,10 @@
         var TOPPLAYLIST = '0eme5GZSMd9DlC84ETBZWU'
         var PLENA = '7LYL5Mcc2oEBphWrKujpq3'
         var LIMIT = 100
-        var LIMIT_ALBUM = 1;
+        var LIMIT_ALBUM = 3;
         var res = []
         var to_add = []
+        let toSave = [];
 
         var p = []
         var n = 0
@@ -105,7 +106,7 @@
           if(n >= p.length)
             return
           let url = 'https://api.spotify.com/v1/playlists/' + TOPPLAYLIST + '/tracks?uris=' + encodeURIComponent(p[n])
-
+	  console.log(url);
           $.ajax({
               url: url,
               type: 'POST',
@@ -124,7 +125,7 @@
 
         function add() {
           //DO uris
-
+	  console.log(to_add)
           for (var j =0;j<LIMIT / 10;j++) {
             var str = ''
             for(var i=0;i + j *10<to_add.length && i <10;i++) {
@@ -133,6 +134,7 @@
             p.push(str)
           }
           n = 0;
+          console.log(p);
           sendNext()
         }
 
@@ -152,6 +154,7 @@
                 add()
               },error: function(XMLHttpRequest, textStatus, errorThrown) {
                 console.log(textStatus + ' :: ' + errorThrown)
+		add()
               }
           });
         }
@@ -167,14 +170,18 @@
             if(albums[res[i].track.album.id] == null) {
                 albums[res[i].track.album.id] = 0;
             }
+            console.log(albums[res[i].track.album.id])
 
             if(albums[res[i].track.album.id] < LIMIT_ALBUM) {
                 added++;
                 albums[res[i].track.album.id]++;
+                toSave.push(JSON.stringify(res[i].track) + '\n')
                 to_add.push(res[i].track.id)
             }
           }
-          console.log(res)
+          var blob = new Blob(toSave, {type: "text/plain;charset=utf-8"});
+          saveAs(blob, "file.txt");
+
           $.ajax({
               url: 'https://api.spotify.com/v1/playlists/' + TOPPLAYLIST + '/tracks',
               headers: {
