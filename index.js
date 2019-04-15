@@ -106,13 +106,13 @@ function copyPlaylist(config) {
           }
         }
 
-        fs.writeFile(config.save_dir +'/' + new Date().toISOString(), toSaveDest.join('\n'), function(err) {
+        fs.writeFile(config.save_dir +'/' + new Date().toISOString() + '.csv', toSaveDest.join('\n'), function(err) {
             if(err) {
                 return console.log(err);
             }
             console.log("The file was saved!");
         });
-        fs.writeFile(config.save_dir +'/' + 'Source_' + new Date().toISOString(), toSaveSource.join('\n'), function(err) {
+        fs.writeFile(config.save_dir +'/' + 'Source_' + new Date().toISOString() + '.csv', toSaveSource.join('\n'), function(err) {
             if(err) {
                 return console.log(err);
             }
