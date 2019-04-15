@@ -1,142 +1,157 @@
-var express = require('express'); // Express web server framework
-var request = require('request'); // "Request" library
-var cors = require('cors');
-var querystring = require('querystring');
-var cookieParser = require('cookie-parser');
-var config = require('./config.json');
+const config = require('./config.json');
+const auth = require('spotify-personal-auth')
+const SpotifyWebApi = require('spotify-web-api-node');
+const fs = require('fs');
 
-var client_id = process.env.CLIENT_ID || config.client_id
-console.log(client_id)
-var client_secret = process.env.CLIENT_SECRET || config.client_secret
-var ip = process.env.OPENSHIFT_NODEJS_IP || '127.0.0.1'
-var redirect_uri = process.env.REDIR_URL || config.redirect_uri
-var port = process.env.OPENSHIFT_NODEJS_PORT || 8888
+// Configure module
+auth.config({
+  port: 8888,
+  clientId: config.client_id, // Replace with your client id
+  clientSecret: config.client_secret, // Replace with your client secret
+  scope: ['user-read-private', 'user-read-email', 'playlist-modify-private', 'playlist-modify-public'], // Replace with your array of needed Spotify scopes
+  path: 'tokens.json' // Optional path to file to save tokens (will be created for you)
+})
 
-/**
- * Generates a random string containing numbers and letters
- * @param  {number} length The length of the string
- * @return {string} The generated string
- */
-var generateRandomString = function(length) {
-  var text = '';
-  var possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+const api = new SpotifyWebApi()
 
-  for (var i = 0; i < length; i++) {
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-  }
-  return text;
-};
+process.on('unhandledRejection', (reason, promise) => {
+  console.log('Unhandled Rejection at:', reason.stack || reason)
+  // Recommended: send the information to sentry.io
+  // or whatever crash reporting service you use
+})
 
-var stateKey = 'spotify_auth_state';
+function getTracks(playlist, array, offset = 0) {
+    console.log(`Download ${playlist} with offset ${offset}`);
+    return api.getPlaylistTracks(playlist, {offset: offset}).then((data) => {
+        array.push.apply(array, data.body.items);
+        if(data.body.next != null) {
+            return getTracks(playlist, array, offset + 100);
+        }
+    })
+}
 
-var app = express();
+function getArtistString(track) {
+    let str = '';
+    for(let i = 0; i < track.artists.length; i++) {
+        str += track.artists[i].name + ' ';
+    }
+    return str;
+}
 
-app.use(express.static(__dirname + '/public'))
-   .use(cors())
-   .use(cookieParser());
 
-app.get('/login', function(req, res) {
+function clearPlaylist(config) {
+    let p = [];
+    return getTracks(config.to, p).then((data) => {
+        let array = [];
+        let i = 0;
+        for(; i < p.length ; i++ ){
+            let w = [];
+            let j = 0;
+            for(;j < 30 && i+j<p.length ; j++) {
+                w.push({'uri': 'spotify:track:' + p[i+j].track.id});
+            }
+            i += j;
+            array.push(w);
+        }
+        console.log("Total count: " + i);
+        if (i == 0) {
+            return Promise.resolve();
+        }
+        let promeses =[];
+        for(let i =0; i< array.length;i++) {
+            promeses.push(
+                new Promise(resolve => setTimeout(resolve, 1000* i)).then(() => {
+                    console.log("Removing ...")
+                    console.log(array[i]);
+                    return api.removeTracksFromPlaylist(config.to, array[i])
+                }));
+        }
+        return Promise.all(promeses).then(()=>{
+            return clearPlaylist(config);
+        });
+    });
+}
 
-  var state = generateRandomString(16);
-  res.cookie(stateKey, state);
-
-  // your application requests authorization
-  var scope = 'user-read-private user-read-email playlist-modify-private playlist-modify-public';
-  res.redirect('https://accounts.spotify.com/authorize?' +
-    querystring.stringify({
-      response_type: 'code',
-      client_id: client_id,
-      scope: scope,
-      redirect_uri: redirect_uri,
-      state: state
-    }));
-});
-
-app.get('/callback', function(req, res) {
-
-  // your application requests refresh and access tokens
-  // after checking the state parameter
-
-  var code = req.query.code || null;
-  var state = req.query.state || null;
-  var storedState = req.cookies ? req.cookies[stateKey] : null;
-
-  if (state === null || state !== storedState) {
-    res.redirect('/#' +
-      querystring.stringify({
-        error: 'state_mismatch'
-      }));
-  } else {
-    res.clearCookie(stateKey);
-    var authOptions = {
-      url: 'https://accounts.spotify.com/api/token',
-      form: {
-        code: code,
-        redirect_uri: redirect_uri,
-        grant_type: 'authorization_code'
-      },
-      headers: {
-        'Authorization': 'Basic ' + (new Buffer(client_id + ':' + client_secret).toString('base64'))
-      },
-      json: true
-    };
-
-    request.post(authOptions, function(error, response, body) {
-      if (!error && response.statusCode === 200) {
-
-        var access_token = body.access_token,
-            refresh_token = body.refresh_token;
-
-        var options = {
-          url: 'https://api.spotify.com/v1/me',
-          headers: { 'Authorization': 'Bearer ' + access_token },
-          json: true
-        };
-
-        // use the access token to access the Spotify Web API
-        request.get(options, function(error, response, body) {
-          console.log(body);
+function copyPlaylist(config) {
+    let res = []
+    return getTracks(config.from, res).then((p) => {
+        console.log("Downloaded")
+        // Sort
+        console.log("Sorting")
+        res.sort(function(a, b) {
+          if (parseInt(a.track.popularity) < parseInt(b.track.popularity)) return 1;
+          if (parseInt(a.track.popularity) > parseInt(b.track.popularity)) return -1;
+          return 0;
         });
 
-        // we can also pass the token to the browser to make requests from there
-        res.redirect('/#' +
-          querystring.stringify({
-            access_token: access_token,
-            refresh_token: refresh_token
-          }));
-      } else {
-        res.redirect('/#' +
-          querystring.stringify({
-            error: 'invalid_token'
-          }));
-      }
+        // Creating list to add
+        let added = 0;
+        let albums = {};
+        let artists = {};
+        let toSaveSource = [];
+        let toSaveDest = [];
+        // For all songs from the list or to reach the limit
+        for(var i = 0; i < res.length; i++) {
+          toSaveSource.push(res[i].track.popularity+':'+getArtistString(res[i].track) + ':' + res[i].track.album.name + ':' + res[i].track.name);
+          if(added >= config.limit_songs) continue;
+          // Add to album var
+          if(albums[res[i].track.album.id] == null) {
+              albums[res[i].track.album.id] = 0;
+          }
+          // Limit per album
+          if(config.limit_per_album == -1 || albums[res[i].track.album.id] < config.limit_per_album) {
+              added++;
+              albums[res[i].track.album.id]++;
+              toSaveDest.push('spotify:track:' + res[i].track.id);
+          }
+        }
+
+        fs.writeFile(config.save_dir +'/' + new Date().toISOString(), toSaveDest.join('\n'), function(err) {
+            if(err) {
+                return console.log(err);
+            }
+            console.log("The file was saved!");
+        });
+        fs.writeFile(config.save_dir +'/' + 'Source_' + new Date().toISOString(), toSaveSource.join('\n'), function(err) {
+            if(err) {
+                return console.log(err);
+            }
+            console.log("The file was saved!");
+        });
+        console.log(toSaveDest);
+        return clearPlaylist(config).then(() => {
+            console.log("All songs are removed");
+            console.log("Total count to add: " + toSaveDest.length);
+            // Split into smaller parts
+            var arrays = [], size = 20;
+            while (toSaveDest.length > 0)
+                arrays.push(toSaveDest.splice(0, size));
+
+
+            let promeses =[];
+            for(let i =0; i< arrays.length;i++) {
+                promeses.push(
+                    new Promise(resolve => setTimeout(resolve, 1000* i)).then(() => {
+                        console.log("Adding ...")
+                        console.log(arrays[i]);
+                        return api.addTracksToPlaylist(config.to, arrays[i])
+                    }));
+            }
+            return Promise.all(promeses);
+        })
     });
+}
+
+auth.token().then(([token, refresh]) => {
+  // Sets api access and refresh token
+  api.setAccessToken(token)
+  api.setRefreshToken(refresh)
+  console.log(refresh);
+
+  // For each playlist
+  for(let i = 0; i < config.playlists.length; i++) {
+      copyPlaylist(config.playlists[i]).then(()=>{
+          console.log("All songs are added");
+      })
   }
-});
-
-app.get('/refresh_token', function(req, res) {
-
-  // requesting access token from refresh token
-  var refresh_token = req.query.refresh_token;
-  var authOptions = {
-    url: 'https://accounts.spotify.com/api/token',
-    headers: { 'Authorization': 'Basic ' + (new Buffer(client_id + ':' + client_secret).toString('base64')) },
-    form: {
-      grant_type: 'refresh_token',
-      refresh_token: refresh_token
-    },
-    json: true
-  };
-
-  request.post(authOptions, function(error, response, body) {
-    if (!error && response.statusCode === 200) {
-      var access_token = body.access_token;
-      res.send({
-        'access_token': access_token
-      });
-    }
-  });
-});
-
-console.log('Listening on ' + port);
-app.listen(port);
+})
