@@ -1,0 +1,18 @@
+{
+  "client_id": "iiiiii",
+  "client_secret" : "iiiiii",
+  "redirect_uri" : "http://localhost:8888/callback",
+  "playlists":
+  [
+      {
+          "from":  "iiiiii",
+          "to": "iiiiii",
+          "limit_songs": 100,
+          "limit_per_album": 3,
+          "limit_per_artist": -1,
+          "save_dir": "data",
+          "prefix_filename_src": "p1_",
+          "prefix_filename_dst": "p2_"
+      }
+  ]
+}
