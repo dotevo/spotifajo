@@ -93,7 +93,7 @@ function copyPlaylist(config) {
         let toSaveDestCSV = [];
         // For all songs from the list or to reach the limit
         for(var i = 0; i < res.length; i++) {
-          toSaveSource.push(res[i].track.popularity+':'+getArtistString(res[i].track) + ':' + res[i].track.album.name + ':' + res[i].track.name);
+          toSaveSource.push({popularity: res[i].track.popularity, artist:getArtistString(res[i].track), album:res[i].track.album.name, name:res[i].track.name});
           if(added >= config.limit_songs) continue;
           // Add to album var
           if(albums[res[i].track.album.id] == null) {
@@ -103,18 +103,18 @@ function copyPlaylist(config) {
           if(config.limit_per_album == -1 || albums[res[i].track.album.id] < config.limit_per_album) {
               added++;
               albums[res[i].track.album.id]++;
-              toSaveDestCSV.push(res[i].track.popularity+':'+getArtistString(res[i].track) + ':' + res[i].track.album.name + ':' + res[i].track.name);
+              toSaveDestCSV.push({popularity: res[i].track.popularity, artist:getArtistString(res[i].track), album:res[i].track.album.name, name:res[i].track.name});
               toSaveDest.push('spotify:track:' + res[i].track.id);
           }
         }
 
-        fs.writeFile(config.save_dir +'/' + config.prefix_filename_dst + new Date().toISOString() + '.csv', toSaveDestCSV.join('\n'), function(err) {
+        fs.writeFile(config.save_dir +'/' + config.prefix_filename_dst + new Date().toISOString() + '.json', JSON.stringify({tracks:toSaveDestCSV}), function(err) {
             if(err) {
                 return console.log(err);
             }
             console.log("The file was saved!");
         });
-        fs.writeFile(config.save_dir +'/' + config.prefix_filename_src + new Date().toISOString() + '.csv', toSaveSource.join('\n'), function(err) {
+        fs.writeFile(config.save_dir +'/' + config.prefix_filename_src + new Date().toISOString() + '.json', JSON.stringify({tracks:toSaveSource}), function(err) {
             if(err) {
                 return console.log(err);
             }
