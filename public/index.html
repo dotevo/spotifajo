@@ -62,6 +62,7 @@
     <div id="form">
       Source playlist: <input type="text" id="srcinput" value="7LYL5Mcc2oEBphWrKujpq3"/><br/>
       Destination playlist: <input type="text" id="dstinput" value="0eme5GZSMd9DlC84ETBZWU"/><br/>
+      Limit: <input type="text" id="limit" value="100"/><br/>
       <input type="submit" id="copybtn" value="Copy top">
     </div>
 
@@ -80,9 +81,11 @@
       (function() {
         var TOPPLAYLIST = '0eme5GZSMd9DlC84ETBZWU'
         var PLENA = '7LYL5Mcc2oEBphWrKujpq3'
+        var LIMIT = 100
         $("#copybtn").click(function(){
           PLENA = $("#srcinput").val()
           TOPPLAYLIST = $("#dstinput").val()
+          LIMIT = Number($("#limit").val())
           download(0)
         })
         var res = []
@@ -114,7 +117,7 @@
         function add() {
           //DO uris
 
-          for (var j =0;j<10;j++) {
+          for (var j =0;j<LIMIT / 10;j++) {
             var str = ''
             for(var i=0;i + j *10<to_add.length && i <10;i++) {
               str+= 'spotify:track:' + to_add[i+j*10] +','
@@ -149,7 +152,7 @@
             //console.log()
             return parseInt(a.track.popularity) < parseInt(b.track.popularity);
           });
-          for(var i=0;i<res.length && i < 100;i++) {
+          for(var i=0;i<res.length && i < LIMIT;i++) {
             console.log(res[i].track.popularity)
             to_add.push(res[i].track.id)
           }
