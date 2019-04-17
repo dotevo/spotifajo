@@ -1,0 +1,268 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Spotifajo :-)</title>
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+    <style type="text/css">
+      #login, #loggedin {
+        display: none;
+      }
+      .text-overflow {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        width: 500px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <div id="login">
+        <h1>Auth</h1>
+        <a href="/login" class="btn btn-primary">Log in with Spotify</a>
+      </div>
+      <div id="loggedin">
+        <div id="user-profile">
+        </div>
+        <div id="oauth">
+        </div>
+        <button class="btn btn-default" id="obtain-new-token">Obtain new token using the refresh token</button>
+      </div>
+    </div>
+
+    <script id="user-profile-template" type="text/x-handlebars-template">
+      <h1>Logged in as {{display_name}}</h1>
+      <div class="media">
+        <div class="pull-left">
+          <img class="media-object" width="150" src="{{images.0.url}}" />
+        </div>
+        <div class="media-body">
+          <dl class="dl-horizontal">
+            <dt>Display name</dt><dd class="clearfix">{{display_name}}</dd>
+            <dt>Id</dt><dd>{{id}}</dd>
+            <dt>Email</dt><dd>{{email}}</dd>
+            <dt>Spotify URI</dt><dd><a href="{{external_urls.spotify}}">{{external_urls.spotify}}</a></dd>
+            <dt>Link</dt><dd><a href="{{href}}">{{href}}</a></dd>
+            <dt>Profile Image</dt><dd class="clearfix"><a href="{{images.0.url}}">{{images.0.url}}</a></dd>
+            <dt>Country</dt><dd>{{country}}</dd>
+          </dl>
+        </div>
+      </div>
+    </script>
+
+    <script id="oauth-template" type="text/x-handlebars-template">
+      <h2>oAuth info</h2>
+      <dl class="dl-horizontal">
+        <dt>Access token</dt><dd class="text-overflow">{{access_token}}</dd>
+        <dt>Refresh token</dt><dd class="text-overflow">{{refresh_token}}</dd>
+      </dl>
+    </script>
+
+    <div id="form">
+      Source playlist: <input type="text" id="srcinput" value="7LYL5Mcc2oEBphWrKujpq3"/><br/>
+      Destination playlist: <input type="text" id="dstinput" value="0eme5GZSMd9DlC84ETBZWU"/><br/>
+      <input type="submit" id="copybtn" value="Copy top">
+    </div>
+
+    <script id="playlist" type="text/x-handlebars-template">
+      <h2>Source</h2>
+      {{#list people}}
+      {{artist}} - {{song}} (value: {{value}})<br/>
+      {{/list}}
+    </script>
+
+
+    <script src="//cdnjs.cloudflare.com/ajax/libs/handlebars.js/2.0.0-alpha.1/handlebars.min.js"></script>
+    <script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+    <script>
+
+      (function() {
+        var TOPPLAYLIST = '0eme5GZSMd9DlC84ETBZWU'
+        var PLENA = '7LYL5Mcc2oEBphWrKujpq3'
+        $("#copybtn").click(function(){
+          PLENA = $("#srcinput").val()
+          TOPPLAYLIST = $("#dstinput").val()
+          download(0)
+        })
+        var res = []
+        var to_add = []
+
+        var p = []
+        n = 0
+        function sendNext() {
+          if(n >= p.length)
+            return
+          let url = 'https://api.spotify.com/v1/playlists/' + TOPPLAYLIST + '/tracks?uris=' + encodeURIComponent(p[n])
+
+          $.ajax({
+              url: url,
+              type: 'POST',
+              crossDomain:true,
+              headers: {
+                'Authorization': 'Bearer ' + access_token
+                },
+              success: function(response) {
+                n++;
+                sendNext()
+              },error: function(XMLHttpRequest, textStatus, errorThrown) {
+                console.log(textStatus + ' :: ' + errorThrown)
+              }
+          });
+        }
+
+        function add() {
+          //DO uris
+
+          for (var j =0;j<10;j++) {
+            var str = ''
+            for(var i=0;i + j *10<to_add.length && i <10;i++) {
+              str+= 'spotify:track:' + to_add[i+j*10] +','
+            }
+            p.push(str)
+          }
+          n = 0;
+          sendNext()
+        }
+
+        function removeFromTop(q) {
+          console.log(q)
+          let url = 'https://api.spotify.com/v1/playlists/' + TOPPLAYLIST + '/tracks'
+          console.log(url)
+          $.ajax({
+              url: url,
+              type: 'DELETE',
+              data: JSON.stringify(q),
+              contentType: "application/json",
+              headers: {
+                'Authorization': 'Bearer ' + access_token
+                },
+              success: function(response) {
+                add()
+              },error: function(XMLHttpRequest, textStatus, errorThrown) {
+                console.log(textStatus + ' :: ' + errorThrown)
+              }
+          });
+        }
+        function downloaded(){
+          res = res.sort(function(a, b) {
+            //console.log()
+            return parseInt(a.track.popularity) < parseInt(b.track.popularity);
+          });
+          for(var i=0;i<res.length && i < 100;i++) {
+            console.log(res[i].track.popularity)
+            to_add.push(res[i].track.id)
+          }
+          console.log(res)
+          $.ajax({
+              url: 'https://api.spotify.com/v1/playlists/' + TOPPLAYLIST + '/tracks',
+              headers: {
+                'Authorization': 'Bearer ' + access_token
+                },
+              success: function(response) {
+                console.log(response)
+                var query = {'tracks': []}
+                for(var i=0;i<response.items.length;i++) {
+                  console.log(i)
+                  query.tracks.push({'uri': 'spotify:track:' + response.items[i].track.id})
+                }
+                removeFromTop(query)
+
+              }
+          });
+        }
+        function download(offset) {
+          $.ajax({
+              url: 'https://api.spotify.com/v1/playlists/' + PLENA + '/tracks?offset=' + offset,
+              headers: {
+                'Authorization': 'Bearer ' + access_token
+                },
+              success: function(response) {
+                console.log(response)
+                res = res.concat(response.items)
+                if(response.items.length == 100)
+                  download(offset+100)
+                else {
+                  downloaded()
+                }
+              }
+          });
+        }
+        /**
+         * Obtains parameters from the hash of the URL
+         * @return Object
+         */
+        function getHashParams() {
+          var hashParams = {};
+          var e, r = /([^&;=]+)=?([^&;]*)/g,
+              q = window.location.hash.substring(1);
+          while ( e = r.exec(q)) {
+             hashParams[e[1]] = decodeURIComponent(e[2]);
+          }
+          return hashParams;
+        }
+
+        var userProfileSource = document.getElementById('user-profile-template').innerHTML,
+            userProfileTemplate = Handlebars.compile(userProfileSource),
+            userProfilePlaceholder = document.getElementById('user-profile');
+
+        var oauthSource = document.getElementById('oauth-template').innerHTML,
+            oauthTemplate = Handlebars.compile(oauthSource),
+            oauthPlaceholder = document.getElementById('oauth');
+
+        var params = getHashParams();
+
+        var access_token = params.access_token,
+            refresh_token = params.refresh_token,
+            error = params.error;
+
+        if (error) {
+          alert('There was an error during the authentication');
+        } else {
+          if (access_token) {
+            // render oauth info
+            oauthPlaceholder.innerHTML = oauthTemplate({
+              access_token: access_token,
+              refresh_token: refresh_token
+            });
+
+            $.ajax({
+                url: 'https://api.spotify.com/v1/me',
+                headers: {
+                  'Authorization': 'Bearer ' + access_token
+                },
+                success: function(response) {
+                  userProfilePlaceholder.innerHTML = userProfileTemplate(response);
+
+                  $('#login').hide();
+                  $('#loggedin').show();
+                  $('#playlist').show();
+                }
+            });
+
+          } else {
+              // render initial screen
+              $('#login').show();
+              $('#playlist').hide();
+              $('#loggedin').hide();
+          }
+
+          document.getElementById('obtain-new-token').addEventListener('click', function() {
+            $.ajax({
+              url: '/refresh_token',
+              data: {
+                'refresh_token': refresh_token
+              }
+            }).done(function(data) {
+              access_token = data.access_token;
+              oauthPlaceholder.innerHTML = oauthTemplate({
+                access_token: access_token,
+                refresh_token: refresh_token
+              });
+            });
+          }, false);
+        }
+      })();
+    </script>
+  </body>
+</html>
