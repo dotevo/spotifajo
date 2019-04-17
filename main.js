@@ -1,18 +1,36 @@
-function get(path, type, fun) {
-    $.ajax({
-        url: path,
-        type: 'POST',
-        dataType: type,
-        success: fun,
-        error: function() {
-            $.get(path, fun);
-        }
+function get(path, type) {
+    return new Promise(function(f, r) {
+        $.ajax({
+            url: path,
+            type: 'POST',
+            dataType: type,
+            success: function(data) {
+                f(data);
+            },
+            error: function() {
+                console.log('Err')
+                $.get(path, function(data) {
+                    f(data);
+                });
+            }
+        });
     });
 }
 
+function download(id, file, func) {
+    return new Promise(function(f, r) {
+        get(file, 'JSON').then(function(data) {
+            f(data);
+        });
+    });
+}
 
-function download(id, file) {
-    get(file, 'JSON', function (data) {
+function downloadList(id, name) {
+    get(name, 'text').then(function(data){
+        console.log(data);
+        let k = data.split('\n');
+        return download(id, k[k.length - 2])
+    }).then(function(data) {
         let kantoj = data['tracks'];
         $(id).empty();
         for(let i = 0; i< kantoj.length; i++) {
@@ -22,15 +40,7 @@ function download(id, file) {
         }
         console.log(kantoj)
 
-    })
-}
-
-function downloadList(id, name) {
-    get(name, 'text', function (data) {
-        let k = data.split('\n');
-        console.log(k[k.length - 2])
-        download(id, k[k.length - 2])
-    })
+    });
 }
 
 function changePlaylist(id, file) {
