@@ -82,17 +82,22 @@
         var TOPPLAYLIST = '0eme5GZSMd9DlC84ETBZWU'
         var PLENA = '7LYL5Mcc2oEBphWrKujpq3'
         var LIMIT = 100
+        var res = []
+        var to_add = []
+
+        var p = []
+        var n = 0
         $("#copybtn").click(function(){
+          res = []
+          to_add = []
+          p = []
+          n = 0
           PLENA = $("#srcinput").val()
           TOPPLAYLIST = $("#dstinput").val()
           LIMIT = Number($("#limit").val())
           download(0)
         })
-        var res = []
-        var to_add = []
 
-        var p = []
-        n = 0
         function sendNext() {
           if(n >= p.length)
             return
