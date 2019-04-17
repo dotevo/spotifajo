@@ -21,20 +21,17 @@ body {
 /* Custom page CSS
 -------------------------------------------------- */
 /* Not required for template or sticky footer method. */
-body > .container-fluid {
-  padding-top: 100px;
+body > .container {
+  padding-top: 50px;
 }
-.container-fluid .col-sm-6 {
-  padding: 0;
-}
+
 .navbar {
   margin-bottom: 0;
 }
 
 .main-content {
-  background: #efefef;
-  padding: 20px;
-  height:calc(100vh - 110px);
+  padding: 10px;
+  height:calc(100vh - 320px);
 }
 
 .list-group {
