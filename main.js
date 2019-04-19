@@ -51,12 +51,12 @@ function downloadList(id, name) {
             if(res == null) continue;
             let d = new Date(Date.parse(res[1]));
             console.log(d)
-            $('#komp').append('<option value="' + k[i] + '">' + d.toLocaleDateString() + '</option>')
+            $('#komp').append('<option value="' + k[i] + ' ">' + d.toLocaleDateString() + '</option>')
             if(komp == null) {
                 komp = k[i];
             }
         }
-        console.log($('#komp').value);
+        $('#komp').val(komp);
         return Promise.all([
             download(id, k[k.length - 2]),
             download(id, komp)
