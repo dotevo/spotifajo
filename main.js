@@ -67,7 +67,8 @@ function downloadList(id, name) {
         let kantojMalnovaj = data[1]['tracks'];
         for (let i = 0; i< kantojMalnovaj.length; i++) {
             for (let j = 0; j< kantojNovaj.length; j++) {
-                if (kantojMalnovaj[i]['name'] == kantojNovaj[j]['name']) {
+                if (kantojMalnovaj[i]['name'] == kantojNovaj[j]['name'] && kantojMalnovaj[i]['artist'] == kantojNovaj[j]['artist']
+                        && kantojMalnovaj[i]['album'] == kantojNovaj[j]['album']) {
                     kantojNovaj[j]['popularity_old'] = kantojMalnovaj[i]['popularity'];
                     kantojNovaj[j]['diff'] = kantojNovaj[j]['popularity'] - kantojNovaj[j]['popularity_old'];
 
